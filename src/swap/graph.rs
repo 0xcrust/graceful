@@ -37,7 +37,7 @@
 //!     Swap::new(sol, bonk, 500_000_000, 42_000_000_000),
 //! ]);
 //!
-//! let net = route.swap();
+//! let net = route.swap().unwrap();
 //! assert_eq!(net.input_mint, usdc);
 //! assert_eq!(net.output_mint, bonk);
 //! assert_eq!(net.input_amount, 100_000_000);
@@ -58,6 +58,16 @@ use solana_pubkey::Pubkey;
 #[derive(Clone, Debug, Default)]
 pub struct SwapGraph {
     swaps: Vec<Swap>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SwapGraphError {
+    EmptyRoute,
+    ImbalancedMint {
+        mint: Pubkey,
+        produced: u64,
+        consumed: u64,
+    },
 }
 
 impl SwapGraph {
@@ -90,35 +100,28 @@ impl SwapGraph {
     /// Panics if this `SwapGraph` contains no swaps. Use
     /// [`SwapGraph::swaps`] to check first if an empty route is possible in
     /// your context.
-    pub fn swap(&self) -> Swap {
-        let input_mint = self
-            .swaps
-            .first()
-            .expect("SwapGraph::swap called on an empty route")
-            .input_mint;
-        let output_mint = self
-            .swaps
-            .last()
-            .expect("SwapGraph::swap called on an empty route")
-            .output_mint;
+    pub fn swap(&self) -> Result<Swap, SwapGraphError> {
+        // self.validate_balance()?;
 
-        // Total input from input_mint (includes potential recycled amounts).
+        if self.swaps.is_empty() {
+            return Err(SwapGraphError::EmptyRoute);
+        }
+
+        let input_mint = self.swaps.first().unwrap().input_mint;
+        let output_mint = self.swaps.last().unwrap().output_mint;
+
         let gross_input: u64 = self
             .swaps
             .iter()
             .filter(|s| s.input_mint == input_mint)
             .map(|s| s.input_amount)
             .sum();
-
-        // Amount recycled back to input_mint via cycles.
         let recycled: u64 = self
             .swaps
             .iter()
             .filter(|s| s.output_mint == input_mint)
             .map(|s| s.output_amount)
             .sum();
-
-        // Net external input = gross - recycled.
         let net_input = gross_input.saturating_sub(recycled);
 
         let output_amount: u64 = self
@@ -128,12 +131,60 @@ impl SwapGraph {
             .map(|s| s.output_amount)
             .sum();
 
-        Swap {
+        Ok(Swap {
             input_mint,
             output_mint,
             input_amount: net_input,
             output_amount,
+        })
+    }
+
+    #[allow(unused)]
+    fn validate_balance(&self) -> Result<(), SwapGraphError> {
+        let input_mint = self
+            .swaps
+            .first()
+            .ok_or(SwapGraphError::EmptyRoute)?
+            .input_mint;
+        let output_mint = self
+            .swaps
+            .last()
+            .ok_or(SwapGraphError::EmptyRoute)?
+            .output_mint;
+
+        let mut produced: HashMap<Pubkey, u64> = HashMap::new();
+        let mut consumed: HashMap<Pubkey, u64> = HashMap::new();
+
+        for s in &self.swaps {
+            *produced.entry(s.output_mint).or_default() += s.output_amount;
+            *consumed.entry(s.input_mint).or_default() += s.input_amount;
         }
+
+        let all_mints: HashSet<Pubkey> = produced.keys().chain(consumed.keys()).copied().collect();
+
+        for mint in all_mints {
+            // Terminal output mint: never needs to be consumed further.
+            if mint == output_mint {
+                continue;
+            }
+            // Overall input mint: outflow can legitimately exceed inflow
+            // (that excess *is* net_input); recycling is handled elsewhere.
+            if mint == input_mint {
+                continue;
+            }
+
+            let p = produced.get(&mint).copied().unwrap_or(0);
+            let c = consumed.get(&mint).copied().unwrap_or(0);
+            if p != c {
+                return Err(SwapGraphError::ImbalancedMint {
+                    mint,
+                    produced: p,
+                    consumed: c,
+                });
+            }
+        }
+
+        Ok(())
     }
 
     /// Splits the route into two legs at an intermediate `mid` mint:
@@ -168,10 +219,10 @@ impl SwapGraph {
 
         // Edge cases: mid is at the boundaries of the route.
         if *mid == input_mint {
-            return (None, Some(self.swap()));
+            return (None, self.swap().ok());
         }
         if *mid == output_mint {
-            return (Some(self.swap()), None);
+            return (self.swap().ok(), None);
         }
 
         // Nothing to split on if mid doesn't appear in the route at all.
@@ -379,7 +430,7 @@ mod basic {
             Swap::new(m[1], m[2], 500, 4_200),
         ]);
 
-        let net = route.swap();
+        let net = route.swap().unwrap();
         assert_eq!(net, Swap::new(m[0], m[2], 100, 4_200));
     }
 
@@ -394,7 +445,7 @@ mod basic {
             Swap::new(m[1], m[2], 800, 3_000),
         ]);
 
-        let net = route.swap();
+        let net = route.swap().unwrap();
         assert_eq!(net.input_mint, m[0]);
         assert_eq!(net.output_mint, m[2]);
         assert_eq!(net.input_amount, 80);
@@ -422,8 +473,8 @@ mod basic {
             Swap::new(m[1], m[2], 500, 4_200),
         ]);
 
-        assert_eq!(route.split(&m[0]), (None, Some(route.swap())));
-        assert_eq!(route.split(&m[2]), (Some(route.swap()), None));
+        assert_eq!(route.split(&m[0]), (None, Some(route.swap().unwrap())));
+        assert_eq!(route.split(&m[2]), (Some(route.swap().unwrap()), None));
     }
 
     #[test]
@@ -443,7 +494,7 @@ mod basic {
             Swap::new(m[2], m[3], 210, 900),
         ]);
 
-        let net = route.swap();
+        let net = route.swap().unwrap();
         assert_eq!(net, Swap::new(m[0], m[3], 100, 1_900));
 
         // Splitting at m1 should only capture the path through m1, ignoring
@@ -468,7 +519,7 @@ mod net_swap {
         let (a, b) = (mint(), mint());
         let route = SwapGraph::new(vec![Swap::new(a, b, 100, 200)]);
 
-        let net = route.swap();
+        let net = route.swap().unwrap();
         assert_eq!(net, Swap::new(a, b, 100, 200));
     }
 
@@ -478,7 +529,7 @@ mod net_swap {
         let (a, b, c) = (mint(), mint(), mint());
         let route = SwapGraph::new(vec![Swap::new(a, b, 1, 2), Swap::new(b, c, 2, 3)]);
 
-        let net = route.swap();
+        let net = route.swap().unwrap();
         assert_eq!(net, Swap::new(a, c, 1, 3));
     }
 
@@ -493,7 +544,7 @@ mod net_swap {
             Swap::new(d, e, 40, 50),
         ]);
 
-        assert_eq!(route.swap(), Swap::new(a, e, 10, 50));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, e, 10, 50));
     }
 
     #[test]
@@ -506,7 +557,7 @@ mod net_swap {
             Swap::new(b, c, 4, 5),
         ]);
 
-        assert_eq!(route.swap(), Swap::new(a, c, 2, 5));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, c, 2, 5));
     }
 
     #[test]
@@ -514,7 +565,7 @@ mod net_swap {
         let (a, b) = (mint(), mint());
         let route = SwapGraph::new(vec![Swap::new(a, b, 0, 0)]);
 
-        let net = route.swap();
+        let net = route.swap().unwrap();
         assert_eq!(net.input_amount, 0);
         assert_eq!(net.output_amount, 0);
     }
@@ -528,7 +579,7 @@ mod net_swap {
             Swap::new(b, c, half_max, half_max),
         ]);
 
-        let net = route.swap();
+        let net = route.swap().unwrap();
         assert_eq!(net.input_amount, half_max);
         assert_eq!(net.output_amount, half_max);
     }
@@ -544,7 +595,7 @@ mod net_swap {
             Swap::new(c, d, 3, 5),
         ]);
 
-        assert_eq!(route.swap(), Swap::new(a, d, 2, 9));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, d, 2, 9));
     }
 
     #[test]
@@ -558,7 +609,7 @@ mod net_swap {
             Swap::new(c, d, 5, 6),
         ]);
 
-        assert_eq!(route.swap(), Swap::new(a, d, 3, 9));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, d, 3, 9));
     }
 
     #[test]
@@ -570,7 +621,7 @@ mod net_swap {
             Swap::new(c, d, 41, 5), // represents a 4.1x leg, scaled by 10
         ]);
 
-        assert_eq!(route.swap(), Swap::new(a, d, 2, 5));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, d, 2, 5));
     }
 
     #[test]
@@ -584,7 +635,7 @@ mod net_swap {
             Swap::new(c, d, 15, 30),
         ]);
 
-        assert_eq!(route.swap(), Swap::new(a, d, 10, 50));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, d, 10, 50));
     }
 
     #[test]
@@ -599,7 +650,7 @@ mod net_swap {
         ]);
 
         // gross_input = 1 + 11 = 12, recycled = 11, net = 1
-        assert_eq!(route.swap(), Swap::new(a, d, 1, 5));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, d, 1, 5));
     }
 
     #[test]
@@ -613,7 +664,7 @@ mod net_swap {
         ]);
 
         // gross_input = 1 + 1 = 2, recycled = 1, net = 1
-        assert_eq!(route.swap(), Swap::new(a, c, 1, 3));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, c, 1, 3));
     }
 
     #[test]
@@ -627,7 +678,7 @@ mod net_swap {
         ]);
 
         // gross_input = 1 + 3 = 4, recycled = 3, net = 1
-        assert_eq!(route.swap(), Swap::new(a, c, 1, 5));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, c, 1, 5));
     }
 
     #[test]
@@ -641,7 +692,7 @@ mod net_swap {
         ]);
 
         // gross_input = 10 + 5 = 15, recycled = 5, net = 10
-        assert_eq!(route.swap(), Swap::new(a, c, 10, 10));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, c, 10, 10));
     }
 
     #[test]
@@ -655,7 +706,7 @@ mod net_swap {
         ]);
 
         // gross_input = 1 + 3 = 4, recycled = 3, net = 1
-        assert_eq!(route.swap(), Swap::new(a, c, 1, 4));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, c, 1, 4));
     }
 
     #[test]
@@ -670,7 +721,7 @@ mod net_swap {
         ]);
 
         // gross_input = 10 + 5 + 2 = 17, recycled = 5 + 2 = 7, net = 10
-        assert_eq!(route.swap(), Swap::new(a, d, 10, 40));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, d, 10, 40));
     }
 
     #[test]
@@ -686,7 +737,7 @@ mod net_swap {
         ]);
 
         // gross_input = 10 + 8 + 5 = 23, recycled = 8 + 5 = 13, net = 10
-        assert_eq!(route.swap(), Swap::new(a, e, 10, 25));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, e, 10, 25));
     }
 
     #[test]
@@ -701,7 +752,7 @@ mod net_swap {
         ]);
 
         // gross_input = 10 + 5 + 10 = 25, recycled = 5, net = 20
-        assert_eq!(route.swap(), Swap::new(a, c, 20, 70));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, c, 20, 70));
     }
 
     #[test]
@@ -718,7 +769,7 @@ mod net_swap {
         ]);
 
         // gross_input = 5 + 10 + 8 = 23, recycled = 8, net = 15
-        assert_eq!(route.swap(), Swap::new(a, d, 15, 27));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, d, 15, 27));
     }
 
     #[test]
@@ -733,7 +784,7 @@ mod net_swap {
             Swap::new(b, d, 15, 25),
         ]);
 
-        assert_eq!(route.swap(), Swap::new(a, d, 10, 25));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, d, 10, 25));
     }
 
     #[test]
@@ -746,7 +797,7 @@ mod net_swap {
             Swap::new(b, d, 15, 25),
         ]);
 
-        assert_eq!(route.swap(), Swap::new(a, d, 10, 25));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, d, 10, 25));
     }
 
     #[test]
@@ -762,7 +813,7 @@ mod net_swap {
         ]);
 
         // gross_input = 10 + 8 + 5 = 23, recycled = 8 + 5 = 13, net = 10
-        assert_eq!(route.swap(), Swap::new(a, e, 10, 25));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, e, 10, 25));
     }
 
     // --------------------------------------------------------------
@@ -773,7 +824,7 @@ mod net_swap {
     #[should_panic(expected = "empty route")]
     fn empty_route_panics() {
         let route = SwapGraph::new(vec![]);
-        let _ = route.swap();
+        let _ = route.swap().unwrap();
     }
 }
 
@@ -813,7 +864,7 @@ mod split {
 
         let (first, second) = route.split(&a);
         assert_eq!(first, None);
-        assert_eq!(second, Some(route.swap()));
+        assert_eq!(second, Some(route.swap().unwrap()));
     }
 
     #[test]
@@ -826,7 +877,7 @@ mod split {
         ]);
 
         let (first, second) = route.split(&c);
-        assert_eq!(first, Some(route.swap()));
+        assert_eq!(first, Some(route.swap().unwrap()));
         assert_eq!(second, None);
     }
 
@@ -842,7 +893,7 @@ mod split {
             Swap::new(c, d, 4, 5),
         ]);
 
-        assert_eq!(route.swap(), Swap::new(a, d, 2, 5));
+        assert_eq!(route.swap().unwrap(), Swap::new(a, d, 2, 5));
     }
 
     #[test]
@@ -878,7 +929,7 @@ mod split {
     #[should_panic(expected = "empty route")]
     fn net_swap_on_an_empty_route_panics() {
         let route = SwapGraph::new(vec![]);
-        let _ = route.swap();
+        let _ = route.swap().unwrap();
     }
 
     #[test]

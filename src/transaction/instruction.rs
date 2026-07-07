@@ -1,3 +1,4 @@
+use core::fmt;
 use std::{borrow::Cow, sync::Arc};
 
 use solana_transaction::CompiledInstruction;
@@ -12,6 +13,47 @@ where
     fn data(&self) -> Result<Cow<'_, [u8]>, Box<dyn std::error::Error>>;
     fn program_id(&self) -> u8;
     fn inner_ixs(&self) -> impl Iterator<Item = &Self>;
+
+    fn path(&self) -> &Path;
+    fn get_inner(&self, path: &Path) -> Option<&Self>;
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct Path(Vec<u8>);
+
+impl Path {
+    pub fn new() -> Self {
+        Path::default()
+    }
+
+    pub fn new_from_idx(idx: u8) -> Self {
+        Path(vec![idx])
+    }
+
+    pub fn new_from_vec(vec: Vec<u8>) -> Self {
+        Path(vec)
+    }
+
+    pub fn push(&mut self, idx: u8) {
+        self.0.push(idx);
+    }
+
+    pub fn iter(&self) -> core::slice::Iter<'_, u8> {
+        self.0.iter()
+    }
+}
+
+impl fmt::Display for Path {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut iter = self.0.iter();
+        if let Some(first) = iter.next() {
+            write!(f, "{first}")?;
+            for idx in iter {
+                write!(f, ".{idx}")?;
+            }
+        }
+        Ok(())
+    }
 }
 
 pub struct TransactionStack {
@@ -30,7 +72,7 @@ impl TransactionStack {
 pub struct StackIx {
     pub ix: Arc<CompiledInstruction>,
     pub inner: Vec<StackIx>,
-    pub path: Vec<u8>,
+    pub path: Path,
 }
 
 impl SolanaInstruction for StackIx {
@@ -48,6 +90,19 @@ impl SolanaInstruction for StackIx {
 
     fn inner_ixs(&self) -> impl Iterator<Item = &Self> {
         self.inner.iter()
+    }
+
+    fn path(&self) -> &Path {
+        &self.path
+    }
+
+    fn get_inner(&self, path: &Path) -> Option<&Self> {
+        let mut curr = self;
+        for idx in path.0.iter() {
+            curr = curr.inner.get(*idx as usize)?;
+        }
+
+        Some(curr)
     }
 }
 
@@ -75,7 +130,7 @@ pub fn build_ix_stack(
     index: u8,
 ) -> StackIx {
     // Initialize the root node that will hold the top-level inner instructions
-    let root_path = vec![index];
+    let root_path = Path::new_from_idx(index);
 
     // Stack stores (Node, Height, NextChildIndex)
     // NextChildIndex is used to generate the path for the next child added to this node
@@ -121,7 +176,7 @@ pub fn build_ix_stack(
         let path = if let Some((parent_node, _, count)) = stack.last() {
             // Path is parent_path + current_child_index
             let mut path = parent_node.path.clone();
-            path.push(*count);
+            path.0.push(*count);
             path
         } else {
             // No parent in stack, so it's a child of the root

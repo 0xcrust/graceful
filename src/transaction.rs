@@ -37,7 +37,7 @@ pub struct SolanaTx {
     pub version: Option<TransactionVersion>,
     pub message: Arc<VersionedMessage>,
     pub instructions: Vec<Arc<CompiledInstruction>>,
-    pub account_keys: Arc<AccountKeys>,
+    pub account_keys: AccountKeys,
     pub meta: Arc<TxMetadata>,
 }
 
@@ -50,7 +50,7 @@ impl SolanaTx {
         matches!(*self.message, VersionedMessage::V0(_))
     }
 
-    pub fn account_keys(&self) -> &Arc<AccountKeys> {
+    pub fn account_keys(&self) -> &AccountKeys {
         &self.account_keys
     }
 
@@ -317,10 +317,10 @@ pub fn unified_tx_from_grpc(
     let meta = geyser::create_tx_meta(meta).map_err(|e| GrpcConvertError::Other(e.to_string()))?;
     let meta = TxMetadata::from(meta);
 
-    let account_keys = Arc::new(AccountKeys::new(
+    let account_keys = AccountKeys::new(
         versioned_tx.message.static_account_keys(),
         meta.loaded_addresses.as_ref(),
-    ));
+    );
 
     Ok(SolanaTx {
         signature,
@@ -383,10 +383,10 @@ pub fn unified_tx_from_rpc(
 
     let signature = *versioned_tx.signatures.first().expect("at least one");
 
-    let account_keys = Arc::new(AccountKeys::new(
+    let account_keys = AccountKeys::new(
         versioned_tx.message.static_account_keys(),
         meta.loaded_addresses.as_ref(),
-    ));
+    );
 
     Ok(SolanaTx {
         signature,

@@ -14,7 +14,7 @@ use solana_transaction::CompiledInstruction;
 /// This type does that resolution and hands accounts out one at a time by
 /// an `Iterator`, matching the order a program would read them in.
 pub struct InstructionAccounts {
-    keys: Arc<AccountKeys>,
+    keys: AccountKeys,
     indices: Arc<Vec<u8>>,
     cursor: usize,
     program_id: Pubkey,
@@ -22,7 +22,7 @@ pub struct InstructionAccounts {
 
 impl InstructionAccounts {
     pub fn new(
-        keys: Arc<AccountKeys>,
+        keys: AccountKeys,
         indices: Arc<Vec<u8>>,
         program_id_idx: u8,
     ) -> Result<Self, KeyError> {
@@ -43,7 +43,7 @@ impl InstructionAccounts {
     }
 
     pub fn from_compiled_instruction(
-        keys: Arc<AccountKeys>,
+        keys: AccountKeys,
         instruction: &CompiledInstruction,
     ) -> Result<Self, KeyError> {
         Self::new(
@@ -97,14 +97,13 @@ impl InstructionAccounts {
     }
 
     /// Look at the account `offset` positions ahead of the cursor without consuming it.
-    pub fn peek(&self, offset: usize) -> Result<Pubkey, KeyError> {
+    pub fn peek(&self, offset: usize) -> Result<&Pubkey, KeyError> {
         let pos = self.cursor + offset;
         let table_idx = *self.indices.get(pos).ok_or(KeyError::AccountsExhausted {
             declared: self.indices.len(),
         })? as usize;
         self.keys
             .get(table_idx)
-            .copied()
             .ok_or(KeyError::AccountIndexOutOfRange {
                 index: table_idx,
                 table_len: self.keys.len(),
@@ -126,6 +125,14 @@ impl Iterator for InstructionAccounts {
                 table_len: self.keys.len(),
             })),
         }
+    }
+}
+
+impl std::ops::Index<usize> for InstructionAccounts {
+    type Output = Pubkey;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.peek(index).unwrap()
     }
 }
 

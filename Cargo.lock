@@ -1488,20 +1488,26 @@ version = "0.1.0"
 dependencies = [
  "agave-feature-set",
  "anchor-lang",
+ "anyhow",
  "base64 0.22.1",
  "bincode",
  "borsh",
  "bs58",
+ "bytemuck",
  "dotenv",
  "laserstream-core-proto",
  "lazy_static",
  "log",
+ "once_cell",
+ "self_cell",
+ "serde",
  "solana-account",
  "solana-account-decoder",
  "solana-address 2.6.1",
  "solana-bincode",
  "solana-client",
  "solana-hash 3.1.0",
+ "solana-log-parser",
  "solana-message",
  "solana-program-error",
  "solana-pubkey 3.0.0",
@@ -3089,6 +3095,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "self_cell"
+version = "1.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b12e76d157a900eb52e81bc6e9f3069344290341720e9178cde2407113ac8d89"
+
+[[package]]
 name = "semver"
 version = "1.0.28"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3902,6 +3914,12 @@ dependencies = [
  "solana-sdk-ids",
  "solana-system-interface 3.2.0",
 ]
+
+[[package]]
+name = "solana-log-parser"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ad7cde13e916b83a5a2f28c9e23bde55d92da960328dd9ad09a8443db95c1915"
 
 [[package]]
 name = "solana-measure"

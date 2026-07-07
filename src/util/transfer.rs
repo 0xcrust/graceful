@@ -8,7 +8,7 @@ use solana_transaction::InstructionError;
 use spl_token_interface::instruction::TokenInstruction;
 
 use crate::transaction::instruction::SolanaInstruction;
-use crate::util::keys::{AccountKeys, InstructionAccounts, KeyError};
+use crate::util::accounts::{AccountKeys, InstructionAccounts, KeyError};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Transfer {
@@ -66,7 +66,7 @@ pub enum TokenParseError {
 }
 
 pub fn parse_transfer(
-    account_keys: Arc<AccountKeys>,
+    account_keys: &AccountKeys,
     accounts: Arc<Vec<u8>>,
     data: &[u8],
     program_id_index: u8,
@@ -93,12 +93,12 @@ pub fn parse_transfer(
 }
 
 pub fn parse_native_transfer(
-    account_keys: Arc<AccountKeys>,
+    account_keys: &AccountKeys,
     accounts: Arc<Vec<u8>>,
     data: &[u8],
     program_id_index: u8,
 ) -> Result<Option<NativeTransfer>, TokenParseError> {
-    let mut keys = InstructionAccounts::new(account_keys, accounts, program_id_index)?;
+    let mut keys = InstructionAccounts::new(account_keys.clone(), accounts, program_id_index)?;
     let instruction = limited_deserialize::<SystemInstruction>(
         data,
         std::mem::size_of::<SystemInstruction>() as u64,
@@ -136,7 +136,7 @@ pub fn parse_native_transfer(
 }
 
 pub fn parse_token_transfer(
-    account_keys: Arc<AccountKeys>,
+    account_keys: &AccountKeys,
     accounts: Arc<Vec<u8>>,
     data: &[u8],
     program_id_index: u8,
@@ -163,8 +163,8 @@ pub fn parse_token_transfer(
         _ => return Ok(None),
     };
 
-    let keys = InstructionAccounts::new(account_keys, accounts.clone(), program_id_index)?;
-    let source_account = keys.peek(0)?;
+    let keys = InstructionAccounts::new(account_keys.clone(), accounts.clone(), program_id_index)?;
+    let source_account = *keys.peek(0)?;
     let (mint, destination_account, signer) = if matches!(
         decoded,
         TokenInstruction::TransferChecked {
@@ -172,9 +172,9 @@ pub fn parse_token_transfer(
             decimals: _
         }
     ) {
-        (Some(keys.peek(1)?), keys.peek(2)?, keys.peek(3)?)
+        (Some(*keys.peek(1)?), *keys.peek(2)?, *keys.peek(3)?)
     } else {
-        (None, keys.peek(1)?, keys.peek(2)?)
+        (None, *keys.peek(1)?, *keys.peek(2)?)
     };
 
     Ok(Some(TokenTransfer {
@@ -187,19 +187,16 @@ pub fn parse_token_transfer(
     }))
 }
 
-pub fn parse_multiple_token_transfers(
-    account_keys: &Arc<AccountKeys>,
-    ixs: &[&impl SolanaInstruction],
+pub fn parse_multiple_token_transfers<'a>(
+    account_keys: &AccountKeys,
+    ixs: impl Iterator<Item = &'a (impl SolanaInstruction + 'a)>,
 ) -> Result<Vec<TokenTransfer>, TokenParseError> {
     let mut transfers = vec![];
 
     for i in ixs {
-        if let Some(tt) = parse_token_transfer(
-            account_keys.clone(),
-            i.accounts(),
-            &i.data()?,
-            i.program_id(),
-        )? {
+        if let Some(tt) =
+            parse_token_transfer(account_keys, i.accounts(), &i.data()?, i.program_id())?
+        {
             transfers.push(tt);
         }
     }

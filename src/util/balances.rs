@@ -12,7 +12,7 @@ use std::{
 };
 use thiserror::Error;
 
-use crate::{transaction::TxMetadata, util::keys::AccountKeys};
+use crate::{transaction::TxMetadata, util::accounts::AccountKeys};
 
 #[derive(Clone)]
 pub struct TxBalance {

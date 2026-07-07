@@ -4,8 +4,11 @@ use solana_message::v0::LoadedAddresses;
 use solana_pubkey::Pubkey;
 
 /// The keys of the accounts involved in a transaction.
+#[derive(Clone, Debug, Default)]
+pub struct AccountKeys(Arc<Inner>);
+
 #[derive(Debug, Default)]
-pub struct AccountKeys {
+struct Inner {
     /// Account keys submitted directly with the transaction.
     static_keys: Vec<Pubkey>,
     /// Resolved writable account keys.
@@ -29,6 +32,10 @@ pub enum AccountKeyError {
 }
 
 impl AccountKeys {
+    /// Create a new instance of [`AccountKeys`].
+    ///
+    /// This provides an iterator over all the account keys for a transaction,
+    /// in exact compilation order.
     pub fn new(static_keys: &[Pubkey], dynamic_keys: Option<&LoadedAddresses>) -> Self {
         let (dynamic_rw, dynamic_ro) = if let Some(dynamic) = dynamic_keys {
             (dynamic.writable.to_vec(), dynamic.readonly.to_vec())
@@ -36,15 +43,11 @@ impl AccountKeys {
             (vec![], vec![])
         };
 
-        Self {
+        Self(Arc::new(Inner {
             static_keys: static_keys.to_vec(),
             dynamic_ro,
             dynamic_rw,
-        }
-    }
-
-    pub fn new_arc(static_keys: &[Pubkey], dynamic_keys: Option<&LoadedAddresses>) -> Arc<Self> {
-        Arc::new(Self::new(static_keys, dynamic_keys))
+        }))
     }
 
     /// Get an Account pubkey by index within the Transaction.
@@ -57,7 +60,7 @@ impl AccountKeys {
     {
         let idx = idx.try_into().ok()?;
         let mut i = idx;
-        [&self.static_keys, &self.dynamic_rw, &self.dynamic_ro]
+        [&self.0.static_keys, &self.0.dynamic_rw, &self.0.dynamic_ro]
             .into_iter()
             .find_map(|k| {
                 k.get(i).map_or_else(
@@ -74,11 +77,11 @@ impl AccountKeys {
     /// affects how account indexes from compiled instructions are resolved and
     /// so should not be changed.
     #[inline]
-    fn key_segment_iter(&self) -> impl Iterator<Item = &[Pubkey]> + Clone {
+    pub fn key_segment_iter(&self) -> impl Iterator<Item = &[Pubkey]> + Clone {
         [
-            self.static_keys.as_slice(),
-            self.dynamic_rw.as_slice(),
-            self.dynamic_ro.as_slice(),
+            self.0.static_keys.as_slice(),
+            self.0.dynamic_rw.as_slice(),
+            self.0.dynamic_ro.as_slice(),
         ]
         .into_iter()
     }

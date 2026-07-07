@@ -1,53 +1,30 @@
-//! Two-tier swap detection for a single instruction (or instruction +
-//! its inner instructions).
+//! Utility methods for retrieving a [`SwapInfo`] for an instruction or
+//! transaction when given input/output token-accounts for it.
 //!
-//! Tier 1, [`get_swap_info_from_balance_diff`], is the cheap path: it reads
-//! the net balance change on two known token accounts and infers direction
-//! from sign alone, without parsing any instruction data. It fails closed
+//! [`get_swap_info_from_balance_diff`] reads the net balance change on two
+//! known token accounts for the source transaction and infers direction
+//! from sign alone, without parsing any instruction data. It fails with
 //! (`SwapInfoError::FailedHeuristic`) only when both accounts moved in the
-//! same direction — which happens when the same account is touched by more
-//! than one instruction in the transaction, so the net diff conflates two
-//! separate legs and sign alone can no longer disambiguate.
+//! same direction, which might happen for an instruction when the same account
+//! was touched by another instruction in the same transaction, resulting in
+//! the net diff conflating two separate legs and thus the sign alone being
+//! inadequate to reach a resolution.
 //!
-//! Tier 2, [`get_swap_info_from_token_transfers`], is the fallback: it
-//! parses actual `Transfer`/`TransferChecked` instructions and identifies
-//! the user's leg by signer, resolving exactly the ambiguity tier 1 can't.
-//!
-//! [`get_swap_info`] wires the two together: try tier 1, escalate to tier 2
-//! only on `FailedHeuristic`, and surface every other error immediately.
-//!
-//! Types assumed to already exist elsewhere in the host crate and
-//! intentionally *not* redefined here: `IxView`, `BorrowedIx`,
-//! `TokenTransfer`, `AccountKeys`, and the balance-lookup type returned by
-//! `ix.balances.get_balance_for_token_account(..)` (with its `.mint()`,
-//! `.token_program()`, `.difference()`, and `.pubkey()` accessors).
-
-use std::sync::Arc;
+//! [`get_swap_info_from_token_transfers`] parses actual `Transfer`
+//! /`TransferChecked` instructions and identifies the user's leg by signer,
+//! resolving exactly the ambiguity tier 1 can't.
 
 use crate::{
     swap::Swap,
     transaction::instruction::SolanaInstruction,
     util::{
+        accounts::AccountKeys,
         balances::{Addr, TokenBalance, TxBalance},
-        keys::AccountKeys,
         transfer::{TokenParseError, TokenTransfer, parse_multiple_token_transfers},
     },
 };
 
 use solana_pubkey::Pubkey;
-
-pub struct ParsedSwap {
-    pub base: Swap,
-    pub input_token_program: Pubkey,
-    pub output_token_program: Pubkey,
-    pub a_to_b: bool,
-}
-
-impl From<ParsedSwap> for Swap {
-    fn from(value: ParsedSwap) -> Self {
-        value.base
-    }
-}
 
 /// Result of successfully identifying a swap's two legs.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -60,6 +37,17 @@ pub struct SwapInfo {
     pub output_token_program: Pubkey,
     /// `true` if the input side is `token_account_a`'s mint.
     pub a_to_b: bool,
+}
+
+impl From<SwapInfo> for Swap {
+    fn from(value: SwapInfo) -> Self {
+        Self {
+            input_mint: value.input_mint,
+            output_mint: value.output_mint,
+            input_amount: value.input_amount,
+            output_amount: value.output_amount,
+        }
+    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -90,55 +78,30 @@ impl SwapInfoError {
     }
 }
 
-/// Tries the cheap balance-diff heuristic first; falls back to parsing
-/// token-transfer instructions only if that heuristic was genuinely
-/// ambiguous. Any other error is surfaced immediately without a fallback
-/// attempt.
+/// Get the swap info for an instruction by parsing direct CPI calls to
+/// the token-program's `Transfer` instruction.
 pub fn get_swap_info(
     balance: &TxBalance,
-    account_keys: &Arc<AccountKeys>,
-    ix: impl SolanaInstruction,
+    account_keys: &AccountKeys,
+    ix: &impl SolanaInstruction,
     token_account_a: Pubkey,
     token_account_b: Pubkey,
     user: Pubkey,
     is_pool_account: bool,
 ) -> Result<Option<SwapInfo>, SwapInfoError> {
-    match get_swap_info_from_balance_diff(
-        balance,
-        token_account_a,
-        token_account_b,
-        is_pool_account,
-    ) {
-        Ok(info) => return Ok(Some(info)),
-        Err(SwapInfoError::FailedHeuristic(a, b)) => {
-            log::warn!(
-                "balance-diff ambiguous (a_input={a}, b_input={b}), falling back to transfer parsing",
-            );
-        }
-        Err(e) => return Err(e),
-    }
-
-    let inner_ixs: Vec<_> = ix.inner_ixs().collect();
-    match get_swap_info_from_token_ixs(
+    get_swap_info_from_token_ixs(
         balance,
         account_keys,
-        &inner_ixs[..],
+        ix.inner_ixs(),
         token_account_a,
         token_account_b,
         user,
         is_pool_account,
-    ) {
-        Ok(None) => {
-            log::warn!("transfer-based fallback also found no swap");
-            Ok(None)
-        }
-        other => other,
-    }
+    )
 }
 
 /// Infers a swap's direction purely from the sign of each account's net
-/// balance change over the transaction. See module docs for when/why this
-/// fails and what to do about it.
+/// balance change over the transaction.
 pub fn get_swap_info_from_balance_diff(
     balance: &TxBalance,
     token_account_a: Pubkey,
@@ -258,17 +221,18 @@ fn find_leg(
     transfers
         .iter()
         .filter(|t| matches(side.account_of(t)))
-        .max_by_key(|t| t.amount)
+        .max_by_key(|t| t.amount) // TODO: Do sum?
 }
 
 /// Parses inner instructions into token transfers, then delegates to
 /// [`get_swap_info_from_token_transfers`]. Convenience wrapper for the
 /// common case where you have the raw inner instructions rather than
 /// already-parsed transfers.
-pub fn get_swap_info_from_token_ixs(
+pub fn get_swap_info_from_token_ixs<'a>(
     balance: &TxBalance,
-    account_keys: &Arc<AccountKeys>,
-    ixs: &[&impl SolanaInstruction],
+    account_keys: &AccountKeys,
+    ixs: impl Iterator<Item = &'a (impl SolanaInstruction + 'a)>,
+    // ixs: &[&impl SolanaInstruction],
     token_account_a: Pubkey,
     token_account_b: Pubkey,
     user: Pubkey,
