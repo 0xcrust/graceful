@@ -31,10 +31,10 @@ pub fn parse<T: SolanaInstruction>(view: IxView<T>) -> Result<Option<DexSwap>, P
         _ => return Ok(None),
     };
 
-    let mut transfers = parse_multiple_token_transfers(&keys, ix.inner_ixs())?;
+    let mut transfers = parse_multiple_token_transfers(&keys, ix.inner_instructions())?;
 
     let withdraw_ix = ix
-        .inner_ixs()
+        .inner_instructions()
         .find_map(|ix| {
             let program_id = keys.get(ix.program_id())?;
             if *program_id == VAULT_PROGRAM {

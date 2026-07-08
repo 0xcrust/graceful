@@ -1,25 +1,71 @@
 use core::fmt;
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, collections::VecDeque, sync::Arc};
 
 use solana_transaction::CompiledInstruction;
 
 use crate::transaction::SolanaTx;
 
+/// Represents a single Solana instruction within a transaction, including any
+/// instructions it invoked via CPI (cross-program invocation).
+///
+/// Implementors form a tree: a top-level instruction's [`inner_instructions`]
+/// are the CPIs it directly triggered, each of which may have its own nested
+/// CPIs, and so on down to arbitrary depth.
+///
+/// [`inner_instructions`]: SolanaInstruction::inner_instructions
 pub trait SolanaInstruction
 where
     Self: Sized,
 {
+    /// The accounts referenced by this instruction, represented as indices
+    /// into the root transaction's list of addresses
     fn accounts(&self) -> Arc<Vec<u8>>;
-    fn data(&self) -> Result<Cow<'_, [u8]>, Box<dyn std::error::Error>>;
-    fn program_id(&self) -> u8;
-    fn inner_ixs(&self) -> impl Iterator<Item = &Self>;
 
+    /// The instruction's data payload.
+    fn data(&self) -> Result<Cow<'_, [u8]>, Box<dyn std::error::Error>>;
+
+    /// The index of the executing program address in the root transaction's
+    /// list of addresses.
+    fn program_id(&self) -> u8;
+
+    /// The instructions directly invoked by this one via CPI (one level deep
+    /// only, not nested).
+    ///
+    /// This returns an iterator so implementations
+    /// aren't forced to allocate.
+    ///
+    /// The `Clone` bound lets callers peek at the count or re-iterate without
+    /// consuming the original.
+    fn inner_instructions(&self) -> impl Iterator<Item = &Self> + Clone;
+
+    /// A full depth-first flattening of every instruction nested anywhere
+    /// beneath this one, both direct CPIs *and* their own nested CPIs,
+    /// at every depth, in the order they occurred.
+    ///
+    /// For an instruction with children `A, B` where `A` itself has children
+    /// `A1, A2`, this yields `A, A1, A2, B` (not `A, B, A1, A2`): each node's
+    /// entire subtree is emitted immediately after the node itself, before
+    /// moving on to the next sibling.
+    fn flat_inner_instructions(&self) -> impl Iterator<Item = &Self> {
+        fn recurse<'a, T: SolanaInstruction>(ix: &'a T) -> Box<dyn Iterator<Item = &'a T> + 'a> {
+            Box::new(
+                ix.inner_instructions()
+                    .flat_map(|child| std::iter::once(child).chain(recurse(child))),
+            )
+        }
+        recurse(self)
+    }
+
+    /// Path identifying this instruction's position from the root transaction.
     fn path(&self) -> &Path;
-    fn get_inner(&self, path: &Path) -> Option<&Self>;
+
+    /// Looks up the instruction at `path`, searching this instruction and its
+    /// full nested tree of CPIs.
+    fn trace(&self, path: &Path) -> Option<&Self>;
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct Path(Vec<u8>);
+pub struct Path(VecDeque<u8>);
 
 impl Path {
     pub fn new() -> Self {
@@ -27,18 +73,22 @@ impl Path {
     }
 
     pub fn new_from_idx(idx: u8) -> Self {
-        Path(vec![idx])
+        Path(vec![idx].into())
     }
 
     pub fn new_from_vec(vec: Vec<u8>) -> Self {
-        Path(vec)
+        Path(vec.into())
     }
 
     pub fn push(&mut self, idx: u8) {
-        self.0.push(idx);
+        self.0.push_back(idx);
     }
 
-    pub fn iter(&self) -> core::slice::Iter<'_, u8> {
+    pub fn pop(&mut self) -> Option<u8> {
+        self.0.pop_front()
+    }
+
+    pub fn iter(&self) -> std::collections::vec_deque::Iter<'_, u8> {
         self.0.iter()
     }
 }
@@ -63,7 +113,7 @@ pub struct TransactionStack {
 impl TransactionStack {
     pub fn build(tx: &SolanaTx) -> Self {
         Self {
-            ixs: tx.instructions().collect(),
+            ixs: tx.root_instructions().collect(),
         }
     }
 }
@@ -88,7 +138,7 @@ impl SolanaInstruction for StackIx {
         self.ix.program_id_index
     }
 
-    fn inner_ixs(&self) -> impl Iterator<Item = &Self> {
+    fn inner_instructions(&self) -> impl Iterator<Item = &Self> + Clone {
         self.inner.iter()
     }
 
@@ -96,7 +146,7 @@ impl SolanaInstruction for StackIx {
         &self.path
     }
 
-    fn get_inner(&self, path: &Path) -> Option<&Self> {
+    fn trace(&self, path: &Path) -> Option<&Self> {
         let mut curr = self;
         for idx in path.0.iter() {
             curr = curr.inner.get(*idx as usize)?;
@@ -176,7 +226,7 @@ pub fn build_ix_stack(
         let path = if let Some((parent_node, _, count)) = stack.last() {
             // Path is parent_path + current_child_index
             let mut path = parent_node.path.clone();
-            path.0.push(*count);
+            path.push(*count);
             path
         } else {
             // No parent in stack, so it's a child of the root
@@ -390,5 +440,119 @@ pub mod instruction_stack_tests {
                 .unwrap(),
             system_program::ID
         );
+    }
+}
+
+#[cfg(test)]
+mod flattened_inner_instructions {
+    use super::*;
+
+    #[derive(Debug, Clone)]
+    struct TestIx {
+        id: &'static str,
+        children: Vec<TestIx>,
+    }
+
+    impl TestIx {
+        fn leaf(id: &'static str) -> Self {
+            Self {
+                id,
+                children: vec![],
+            }
+        }
+
+        fn node(id: &'static str, children: Vec<TestIx>) -> Self {
+            Self { id, children }
+        }
+    }
+
+    impl SolanaInstruction for TestIx {
+        fn accounts(&self) -> Arc<Vec<u8>> {
+            unimplemented!()
+        }
+
+        fn data(&self) -> Result<Cow<'_, [u8]>, Box<dyn std::error::Error>> {
+            unimplemented!()
+        }
+
+        fn program_id(&self) -> u8 {
+            unimplemented!()
+        }
+
+        fn inner_instructions(&self) -> impl Iterator<Item = &Self> + Clone {
+            self.children.iter()
+        }
+
+        fn path(&self) -> &Path {
+            unimplemented!()
+        }
+
+        fn trace(&self, _path: &Path) -> Option<&Self> {
+            unimplemented!()
+        }
+    }
+
+    fn ids<'a>(iter: impl Iterator<Item = &'a TestIx>) -> Vec<&'a str> {
+        iter.map(|ix| ix.id).collect()
+    }
+
+    // 1 -> 1A -> 1A1 -> 1A1A
+    //                -> 1A1B
+    //           -> 1A2
+    //      -> 1B -> 1B1
+    //      -> 1C -> 1C1
+    //           -> 1C2
+    //           -> 1C3 -> 1C31
+    //      -> 1D -> 1D1
+    //           -> 1D2
+    fn build_tree() -> TestIx {
+        let a1 = TestIx::node("1A1", vec![TestIx::leaf("1A1A"), TestIx::leaf("1A1B")]);
+        let a = TestIx::node("1A", vec![a1, TestIx::leaf("1A2")]);
+
+        let b = TestIx::node("1B", vec![TestIx::leaf("1B1")]);
+
+        let c3 = TestIx::node("1C3", vec![TestIx::leaf("1C31")]);
+        let c = TestIx::node("1C", vec![TestIx::leaf("1C1"), TestIx::leaf("1C2"), c3]);
+
+        let d = TestIx::node("1D", vec![TestIx::leaf("1D1"), TestIx::leaf("1D2")]);
+
+        TestIx::node("1", vec![a, b, c, d])
+    }
+
+    #[test]
+    fn flattens_full_tree_in_preorder() {
+        let root = build_tree();
+        let flat = ids(root.flat_inner_instructions());
+
+        assert_eq!(
+            flat,
+            vec![
+                "1A", "1A1", "1A1A", "1A1B", "1A2", "1B", "1B1", "1C", "1C1", "1C2", "1C3", "1C31",
+                "1D", "1D1", "1D2",
+            ]
+        );
+    }
+
+    #[test]
+    fn leaf_has_no_inner_instructions() {
+        let leaf = TestIx::leaf("solo");
+        assert_eq!(ids(leaf.flat_inner_instructions()), Vec::<&str>::new());
+    }
+
+    #[test]
+    fn single_level_children_only() {
+        // No grandchildren at all: flat output should equal direct children.
+        let root = TestIx::node(
+            "root",
+            vec![TestIx::leaf("x"), TestIx::leaf("y"), TestIx::leaf("z")],
+        );
+        assert_eq!(ids(root.flat_inner_instructions()), vec!["x", "y", "z"]);
+    }
+
+    #[test]
+    fn inner_instructions_is_direct_children_only() {
+        let root = build_tree();
+        // Sanity check: inner_instructions() (not flattened) is just 1A/1B/1C/1D.
+        assert_eq!(ids(root.inner_instructions()), vec!["1A", "1B", "1C", "1D"]);
     }
 }

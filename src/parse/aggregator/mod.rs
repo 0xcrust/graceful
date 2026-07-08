@@ -53,9 +53,9 @@ impl<'a, T: SolanaInstruction> IxView<'a, T> {
     fn aggregator_routes(&self) -> Result<Routes, ParseError> {
         Ok(Routes(
             self.ix
-                .inner_ixs()
+                .inner_instructions()
                 .filter_map(|ix| {
-                    let ix = Self::clone_new_from(ix, self);
+                    let ix = Self::new_cloned(ix, self);
                     let agg_id = self.program_id().ok()?;
                     let id = ix.program_id().ok()?;
 
@@ -72,7 +72,7 @@ impl<'a, T: SolanaInstruction> IxView<'a, T> {
                         Some(dex) => Route::Decoded(dex),
                         None => {
                             let transfers =
-                                parse_multiple_token_transfers(&self.keys, ix.inner_ixs())
+                                parse_multiple_token_transfers(&self.keys, ix.inner_instructions())
                                     .unwrap_or_default();
                             Route::Undecoded {
                                 program,

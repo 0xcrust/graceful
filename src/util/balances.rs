@@ -16,7 +16,7 @@ use crate::{transaction::TxMetadata, util::accounts::AccountKeys};
 
 #[derive(Clone)]
 pub struct TxBalance {
-    keys: Arc<AccountKeys>,
+    keys: AccountKeys,
     meta: Arc<TxMetadata>,
 }
 
@@ -26,7 +26,7 @@ pub enum Addr {
 }
 
 impl TxBalance {
-    pub fn new(meta: Arc<TxMetadata>, keys: Arc<AccountKeys>) -> Self {
+    pub fn new(meta: Arc<TxMetadata>, keys: AccountKeys) -> Self {
         Self { keys, meta }
     }
 

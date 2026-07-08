@@ -16,6 +16,7 @@ pub mod raydium_cp;
 pub mod raydium_v4;
 pub mod saros_amm;
 pub mod saros_dlmm;
+pub mod scorch;
 pub mod stabble_stable;
 pub mod stabble_weighted;
 
@@ -42,6 +43,7 @@ pub fn is_basic_amm(program: &Program) -> bool {
             | Program::RaydiumV4
             | Program::SarosAmm
             | Program::SarosDLMM
+            | Program::Scorch
             | Program::StabbleStable
             | Program::StabbleWeighted
     )

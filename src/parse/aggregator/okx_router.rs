@@ -41,7 +41,7 @@ pub fn parse<T: SolanaInstruction>(view: IxView<T>) -> Result<Option<AggregatorS
 
     let program = Program::OKXDexRouter2;
     let program_id = program.pubkey();
-    let cpi_data = filter_cpi_logs_data(keys, &program_id, ix.inner_ixs());
+    let cpi_data = filter_cpi_logs_data(keys, &program_id, ix.inner_instructions());
 
     let mut swap = None;
 

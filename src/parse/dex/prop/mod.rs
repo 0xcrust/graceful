@@ -3,7 +3,6 @@ pub mod aquifer;
 pub mod bisonfi;
 pub mod goonfi;
 pub mod humidifi;
-pub mod scorch;
 pub mod solfi;
 pub mod solfi_v2;
 pub mod tessera;
@@ -25,5 +24,3 @@ pub fn is_prop_amm(program: &Program) -> bool {
             | Program::ZeroFi
     )
 }
-
-// Scorch:

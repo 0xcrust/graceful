@@ -38,6 +38,13 @@ pub enum TxLogsError {
 }
 
 impl TxLogs {
+    pub fn new(meta: Arc<TxMetadata>) -> Self {
+        Self {
+            meta,
+            parsed: Arc::new(OnceCell::new()),
+        }
+    }
+
     pub fn program_logs<'a>(
         &'a self,
         path: &Path,

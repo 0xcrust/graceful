@@ -2,6 +2,7 @@ mod geyser;
 pub mod instruction;
 pub mod keys;
 
+pub use instruction::SolanaInstruction;
 use instruction::{IxWithStackHeight, StackIx};
 use keys::AccountKeys;
 
@@ -27,6 +28,8 @@ use solana_transaction_status::{Reward, option_serializer::OptionSerializer};
 use solana_vote_program::vote_instruction::VoteInstruction;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use thiserror::Error;
+
+use crate::transaction::instruction::TransactionStack;
 
 #[derive(Clone, Debug)]
 pub struct SolanaTx {
@@ -67,7 +70,11 @@ impl SolanaTx {
         &self.message.static_account_keys()[0..signatures]
     }
 
-    pub fn instructions(&self) -> impl Iterator<Item = StackIx> {
+    pub fn build_stack(&self) -> TransactionStack {
+        TransactionStack::build(self)
+    }
+
+    pub fn root_instructions(&self) -> impl Iterator<Item = StackIx> {
         self.instructions.iter().enumerate().map(|(idx, ix)| {
             let idx = idx as u8;
             let inner_ixs = self

@@ -92,7 +92,7 @@ pub fn get_swap_info(
     get_swap_info_from_token_ixs(
         balance,
         account_keys,
-        ix.inner_ixs(),
+        ix.inner_instructions(),
         token_account_a,
         token_account_b,
         user,
