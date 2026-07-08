@@ -16,7 +16,7 @@ pub fn parse<T: SolanaInstruction>(view: IxView<T>) -> Result<Option<DexSwap>, P
 
     let data = ix.data()?;
     let (user, market, vault_in, vault_out, _token_in_mint, _token_out_mint) =
-        match data.get(0).copied() {
+        match data.first().copied() {
             Some(SWAP) => (accs[1], accs[15], accs[4], accs[5], accs[6], accs[7]),
             _ => return Ok(None),
         };

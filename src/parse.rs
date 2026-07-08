@@ -56,8 +56,7 @@ use crate::{
 /// treated as an error. Otherwise it's parsed via [`parse_instruction`].
 ///
 /// # Errors
-/// - Returns `ParseTxError::Convert` if `tx` fails to convert into a
-/// [`SolanaTx`].
+/// - Returns `ParseTxError::Convert` if `tx` fails to convert into a [`SolanaTx`].
 ///
 /// - Returns `ParseTxError::Ix` if a recognized instruction fails to parse.
 pub fn parse_transaction<E: std::error::Error + 'static, T: TryInto<SolanaTx, Error = E>>(

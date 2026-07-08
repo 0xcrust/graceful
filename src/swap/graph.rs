@@ -25,8 +25,8 @@
 //! # Example
 //!
 //! ```
-//! # use swap_graph::{Swap, SwapGraph};
-//! # use solana_program::pubkey::Pubkey;
+//! # use graceful::swap::{Swap, graph::SwapGraph};
+//! # use solana_pubkey::Pubkey;
 //! let usdc = Pubkey::new_unique();
 //! let sol = Pubkey::new_unique();
 //! let bonk = Pubkey::new_unique();
@@ -816,21 +816,14 @@ mod net_swap {
         assert_eq!(route.swap().unwrap(), Swap::new(a, e, 10, 25));
     }
 
-    // --------------------------------------------------------------
-    // Edge cases
-    // --------------------------------------------------------------
-
     #[test]
-    #[should_panic(expected = "empty route")]
     fn empty_route_panics() {
         let route = SwapGraph::new(vec![]);
-        let _ = route.swap().unwrap();
+        assert_eq!(route.swap().unwrap_err(), SwapGraphError::EmptyRoute)
     }
 }
 
-// ================================================================
 // SwapGraph::split() - aggregating a route into two legs at a mint
-// ================================================================
 #[cfg(test)]
 mod split {
     use super::*;
@@ -923,13 +916,6 @@ mod split {
         let (first, second) = route.split(&c);
         assert_eq!(first, Some(Swap::new(a, c, 2, 5)));
         assert_eq!(second, None);
-    }
-
-    #[test]
-    #[should_panic(expected = "empty route")]
-    fn net_swap_on_an_empty_route_panics() {
-        let route = SwapGraph::new(vec![]);
-        let _ = route.swap().unwrap();
     }
 
     #[test]
