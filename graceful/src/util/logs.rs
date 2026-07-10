@@ -116,8 +116,8 @@ fn trace_ix_call<'a>(
 pub fn filter_cpi_logs_data<'a, T: SolanaInstruction + 'a>(
     account_keys: &AccountKeys,
     program: &Pubkey,
-    ixs: impl Iterator<Item = &'a T>,
-) -> impl Iterator<Item = Cow<'a, [u8]>> {
+    ixs: impl Iterator<Item = &'a T> + Clone,
+) -> impl Iterator<Item = Cow<'a, [u8]>> + Clone {
     ixs.filter_map(move |ix| {
         let ix_program = account_keys.get(ix.program_id() as usize)?;
 

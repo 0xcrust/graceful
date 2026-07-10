@@ -97,7 +97,7 @@ fn decode_log(log: impl AsRef<str>) -> Option<(BaseEvent, Option<V2Extensions>)>
 
     match &bytes[..8] {
         SWAP_EVENT => {
-            let buf = &mut &bytes[..];
+            let buf = &mut &bytes[8..];
             let base = BaseEvent::deserialize(buf).ok()?;
 
             Some((base, V2Extensions::deserialize(buf).ok()))

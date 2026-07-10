@@ -18,6 +18,7 @@ const _SWAP_DETAILS_V3: &[u8] = &[79, 62, 249, 87, 62, 217, 136, 30];
 
 pub fn parse<T: SolanaInstruction>(view: IxView<T>) -> Result<Option<AggregatorSwap>, ParseError> {
     let IxView { ix, ref keys, .. } = view;
+
     let data = ix.data()?;
 
     let accs = InstructionAccounts::new(keys.clone(), ix.accounts(), ix.program_id())?;
@@ -36,7 +37,7 @@ pub fn parse<T: SolanaInstruction>(view: IxView<T>) -> Result<Option<AggregatorS
     let program = Program::TitanExchangeRouter;
 
     let routes = view.aggregator_routes()?;
-    let swap = routes.swap();
+    let swap = routes.swap().ok();
 
     let parsed = AggregatorSwap {
         user,

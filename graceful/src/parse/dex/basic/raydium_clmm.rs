@@ -32,24 +32,24 @@ pub fn parse<T: SolanaInstruction>(view: IxView<T>) -> Result<Option<DexSwap>, P
         _ => return Ok(None),
     };
 
-    let input_mint = balance
-        .find_token_account_balance(Addr::Key(input_vault))
-        .mint();
-    let output_mint = balance
-        .find_token_account_balance(Addr::Key(output_vault))
-        .mint();
-
-    let (input_mint, output_mint) = match (input_mint, output_mint) {
-        (Some(input), Some(output)) => (input, output),
-        _ => return Err(ParseError::NoDetailsFound),
-    };
-
     let program = Program::RaydiumClmm;
 
     let log = parse_log(&view)?;
 
     let swap = match log {
         Some(event) => {
+            let input_mint = balance
+                .find_token_account_balance(Addr::Key(input_vault))
+                .mint();
+            let output_mint = balance
+                .find_token_account_balance(Addr::Key(output_vault))
+                .mint();
+
+            let (input_mint, output_mint) = match (input_mint, output_mint) {
+                (Some(input), Some(output)) => (input, output),
+                _ => return Err(ParseError::NoDetailsFound),
+            };
+
             let (input_amount, output_amount) = if event.zero_for_one {
                 (event.amount0, event.amount1)
             } else {
@@ -92,14 +92,14 @@ fn decode_log(log: impl AsRef<str>) -> Option<Event> {
 
     match &bytes[..8] {
         SWAP_EVENT => {
-            let buf = &mut &bytes[..];
+            let buf = &mut &bytes[8..];
             Event::deserialize(buf).ok()
         }
         _ => None,
     }
 }
 
-#[derive(AnchorDeserialize)]
+#[derive(AnchorDeserialize, Debug)]
 #[allow(dead_code)]
 struct Event {
     pub pool_state: Pubkey,

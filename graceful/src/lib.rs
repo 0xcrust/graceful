@@ -19,6 +19,7 @@
 //! - [`util`]: shared helpers for working with account keys, balances, and
 //!   logs.
 
+pub mod mint;
 pub mod parse;
 pub mod swap;
 pub mod transaction;

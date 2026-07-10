@@ -23,10 +23,16 @@ pub fn parse<T: SolanaInstruction>(view: IxView<T>) -> Result<Option<AggregatorS
 
     let accs = InstructionAccounts::new(keys.clone(), ix.accounts(), ix.program_id())?;
 
-    let user = *accs.peek(1)?;
+    let (input_token_account, user) = (*accs.peek(0)?, *accs.peek(1)?);
+
+    let _input_token_account = if input_token_account == user {
+        None
+    } else {
+        Some(input_token_account)
+    };
 
     let routes = view.aggregator_routes()?;
-    let swap = routes.swap();
+    let swap = routes.swap().ok();
 
     let parsed = AggregatorSwap {
         program: Program::AxiomTrade,

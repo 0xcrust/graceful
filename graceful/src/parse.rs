@@ -152,7 +152,7 @@ impl<'a, T: SolanaInstruction> IxView<'a, T> {
     /// Resolves the [`Pubkey`] of the program that owns this instruction.
     fn program_id(&self) -> Result<Pubkey, ParseError> {
         self.keys
-            .get(self.ix.accounts()[self.ix.program_id() as usize])
+            .get(self.ix.program_id() as usize)
             .copied()
             .ok_or(ParseError::NoProgramId)
     }
@@ -190,10 +190,10 @@ pub struct DexSwap {
 #[derive(Debug, thiserror::Error)]
 pub enum ParseTxError {
     /// The input failed to convert into a [`SolanaTx`].
-    #[error("Error converting transaction: {}", 0)]
+    #[error("Error converting transaction: {0}")]
     Convert(Box<dyn std::error::Error>),
     /// A recognized instruction failed to parse.
-    #[error("Error parsing instruction: {}", 0)]
+    #[error("Error parsing instruction: {0}")]
     Ix(#[from] WithTrace<ParseError>),
 }
 
@@ -201,7 +201,7 @@ pub enum ParseTxError {
 #[derive(Debug, thiserror::Error)]
 pub enum ParseError {
     /// Catch-all for errors from lower-level parsing steps.
-    #[error(transparent)]
+    #[error("Generic error: {0}")]
     Generic(#[from] Box<dyn std::error::Error>),
 
     /// Failed to resolve an account key referenced by the instruction.

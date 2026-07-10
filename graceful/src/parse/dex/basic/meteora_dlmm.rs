@@ -28,7 +28,7 @@ pub fn parse<T: SolanaInstruction>(view: IxView<T>) -> Result<Option<DexSwap>, P
         | SWAP_EXACT_OUT
         | SWAP_EXACT_OUT2
         | SWAP_WITH_PRICE_IMPACT
-        | SWAP_WITH_PRICE_IMPACT2 => (accs[6], accs[7], accs[0], accs[10], accs[11], accs[12]),
+        | SWAP_WITH_PRICE_IMPACT2 => (accs[0], accs[10], accs[6], accs[7], accs[2], accs[3]),
         _ => return Ok(None),
     };
 

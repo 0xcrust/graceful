@@ -1,0 +1,28 @@
+[package]
+name = "graceful-cli"
+version = "0.1.0"
+edition = "2024"
+description = "A binary for parsing solana transactions with CLI output"
+
+[dependencies]
+anchor-lang = {workspace = true}
+anchor-spl = {workspace = true}
+anyhow = {workspace = true}
+clap = {version = "4.6.1", features = ["derive"]}
+colored = "3.1.1"
+comfy-table = "7.2.2"
+dotenv = "0.15.0"
+env_logger = "0.11.11"
+graceful = {path = "../graceful"}
+log = {workspace = true}
+solana-client = {workspace = true}
+solana-commitment-config = {workspace = true}
+solana-program-pack = {workspace = true}
+solana-pubkey = {workspace = true}
+solana-signature = {workspace = true}
+solana-transaction-status = {workspace = true}
+spl-token-2022-interface = {workspace = true}
+spl-token-interface = {workspace = true}
+spl-token-metadata-interface = {workspace = true}
+tokio = {workspace = true}
+
