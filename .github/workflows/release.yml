@@ -27,13 +27,13 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test --all-features
-      - name: Check tag matches graceful-cli version
+      - name: Check tag matches cargo-graceful version
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           CARGO_VERSION="$(cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[] | select(.name == "graceful-cli") | .version')"
+            | jq -r '.packages[] | select(.name == "cargo-graceful") | .version')"
           if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
-            echo "Tag version ($TAG_VERSION) does not match graceful-cli version ($CARGO_VERSION)"
+            echo "Tag version ($TAG_VERSION) does not match cargo-graceful version ($CARGO_VERSION)"
             exit 1
           fi
 
@@ -71,11 +71,11 @@ jobs:
 
       - name: Build (native)
         if: ${{ !contains(matrix.target, 'musl') && !contains(matrix.target, 'aarch64-unknown-linux') }}
-        run: cargo build --release --locked -p graceful-cli --target ${{ matrix.target }}
+        run: cargo build --release --locked -p cargo-graceful --target ${{ matrix.target }}
 
       - name: Build (cross)
         if: contains(matrix.target, 'musl') || contains(matrix.target, 'aarch64-unknown-linux')
-        run: cross build --release --locked -p graceful-cli --target ${{ matrix.target }}
+        run: cross build --release --locked -p cargo-graceful --target ${{ matrix.target }}
 
       - name: Package (unix)
         shell: bash
@@ -122,7 +122,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       # Dry-run first as a final sanity check (packaging errors, missing
-      # license file, etc). `graceful` must publish before `graceful-cli`,
+      # license file, etc). `graceful` must publish before `cargo-graceful`,
       # since the CLI depends on it with a version requirement.
       - name: Dry-run publish (graceful)
         run: cargo publish -p graceful --dry-run
@@ -134,7 +134,7 @@ jobs:
       - name: Wait for index
         run: sleep 20
 
-      - name: Dry-run publish (graceful-cli)
-        run: cargo publish -p graceful-cli --dry-run
-      - name: Publish graceful-cli
-        run: cargo publish -p graceful-cli --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: Dry-run publish (cargo-graceful)
+        run: cargo publish -p cargo-graceful --dry-run
+      - name: Publish cargo-graceful
+        run: cargo publish -p cargo-graceful --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
