@@ -1,5 +1,5 @@
 [package]
-name = "graceful-lib"
+name = "graceful"
 version = "0.1.0"
 edition = "2024"
 description = "A parser for Solana swap transactions"
