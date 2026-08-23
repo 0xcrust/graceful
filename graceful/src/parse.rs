@@ -92,7 +92,7 @@ pub fn parse_transaction<E: std::error::Error + 'static, T: TryInto<SolanaTx, Er
 ///
 /// Returns `Ok(None)` if the instruction's program isn't a recognized
 /// aggregator or AMM.
-fn parse_instruction<T: SolanaInstruction>(
+pub fn parse_instruction<T: SolanaInstruction>(
     view: IxView<T>,
 ) -> Result<Option<Parsed>, WithTrace<ParseError>> {
     with_trace(view, parse_instruction_internal)

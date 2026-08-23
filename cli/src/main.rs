@@ -6,8 +6,9 @@
 //! pubkey) using `fetch_mint_infos`.
 //!
 //! Usage:
+//! ```text
 //!   graceful-cli <SIGNATURE> [<SIGNATURE> ...] [--rpc-url <URL>] [--detail full|summary] [--style tree|compact|table]
-//!
+//! ```
 
 mod infos;
 
