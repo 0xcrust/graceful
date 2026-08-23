@@ -11,7 +11,7 @@ permissions:
 
 env:
   CARGO_TERM_COLOR: always
-  BIN_NAME: cargo-graceful
+  BIN_NAME: cargo-graced
 
 jobs:
   # Re-run the same checks as CI before publishing
@@ -27,13 +27,13 @@ jobs:
       - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features -- -D warnings
       - run: cargo test --all-features
-      - name: Check tag matches cargo-graceful version
+      - name: Check tag matches cargo-graced version
         run: |
           TAG_VERSION="${GITHUB_REF_NAME#v}"
           CARGO_VERSION="$(cargo metadata --no-deps --format-version 1 \
-            | jq -r '.packages[] | select(.name == "cargo-graceful") | .version')"
+            | jq -r '.packages[] | select(.name == "cargo-graced") | .version')"
           if [ "$TAG_VERSION" != "$CARGO_VERSION" ]; then
-            echo "Tag version ($TAG_VERSION) does not match cargo-graceful version ($CARGO_VERSION)"
+            echo "Tag version ($TAG_VERSION) does not match cargo-graced version ($CARGO_VERSION)"
             exit 1
           fi
 
@@ -71,11 +71,11 @@ jobs:
 
       - name: Build (native)
         if: ${{ !contains(matrix.target, 'musl') && !contains(matrix.target, 'aarch64-unknown-linux') }}
-        run: cargo build --release --locked -p cargo-graceful --target ${{ matrix.target }}
+        run: cargo build --release --locked -p cargo-graced --target ${{ matrix.target }}
 
       - name: Build (cross)
         if: contains(matrix.target, 'musl') || contains(matrix.target, 'aarch64-unknown-linux')
-        run: cross build --release --locked -p cargo-graceful --target ${{ matrix.target }}
+        run: cross build --release --locked -p cargo-graced --target ${{ matrix.target }}
 
       - name: Package (unix)
         shell: bash
@@ -122,7 +122,7 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       # Dry-run first as a final sanity check (packaging errors, missing
-      # license file, etc). `graceful` must publish before `cargo-graceful`,
+      # license file, etc). `graceful` must publish before `cargo-graced`,
       # since the CLI depends on it with a version requirement.
       - name: Dry-run publish (graceful)
         run: cargo publish -p graceful --dry-run
@@ -134,7 +134,7 @@ jobs:
       - name: Wait for index
         run: sleep 20
 
-      - name: Dry-run publish (cargo-graceful)
-        run: cargo publish -p cargo-graceful --dry-run
-      - name: Publish cargo-graceful
-        run: cargo publish -p cargo-graceful --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: Dry-run publish (cargo-graced)
+        run: cargo publish -p cargo-graced --dry-run
+      - name: Publish cargo-graced
+        run: cargo publish -p cargo-graced --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
