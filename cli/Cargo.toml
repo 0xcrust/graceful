@@ -26,3 +26,18 @@ spl-token-interface = {workspace = true}
 spl-token-metadata-interface = {workspace = true}
 tokio = {workspace = true}
 
+[[bin]]
+name = "cargo-graceful"
+path = "src/main.rs"
+
+[package.metadata.binstall]
+pkg-url = "{ repo }/releases/download/v{ version }/cargo-graceful-{ target }{ archive-suffix }"
+bin-dir = "cargo-graceful{ binary-ext }"
+pkg-fmt = "tgz"
+
+[package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
+pkg-fmt = "zip"
+
+[package.metadata.binstall.overrides.aarch64-pc-windows-msvc]
+pkg-fmt = "zip"
+

@@ -7,15 +7,11 @@
 //! (a *cycle*, used e.g. to net out fees or take advantage of a favorable pool).
 //!
 //! [`SwapGraph`] takes the flat list of elementary [`Swap`]s produced by such a
-//! route and answers two questions about it:
+//! route and answers the following question:
 //!
-//! 1. **What is the net effect of the whole route?** ([`SwapGraph::swap`]) -
-//!    i.e. "how much of the *original* input mint went in, and how much of the
-//!    *final* output mint came out", after netting out any recycled amounts.
-//! 2. **What did the route look like on either side of some intermediate
-//!    mint?** ([`SwapGraph::split`]) - i.e. the aggregate swap from the
-//!    original input mint up to that mint, and the aggregate swap from that
-//!    mint to the final output mint.
+//! **What is the net effect of the whole route?** ([`SwapGraph::swap`]) -
+//! i.e. "how much of the *original* input mint went in, and how much of the
+//! *final* output mint came out", after netting out any recycled amounts.
 //!
 //! Internally, the list of swaps is treated as a directed graph whose nodes are
 //! mints and whose edges are elementary swaps, and the two questions above are
@@ -86,10 +82,9 @@ impl SwapGraph {
     /// Wraps a flat, unordered-by-graph-position list of elementary swaps.
     ///
     /// The only ordering requirement is the one already implied by the data:
-    /// [`SwapGraph::swap`] and [`SwapGraph::split`] treat `swaps.first()` as
-    /// the entry point of the route (its `input_mint` is the route's overall
-    /// input) and `swaps.last()` as the exit point (its `output_mint` is the
-    /// route's overall output).
+    /// [`SwapGraph::swap`] treats `swaps.first()` as the entry point of the
+    /// route (its `input_mint` is the route's overall input) and `swaps.last()`
+    /// as the exit point (its `output_mint` is the route's overall output).
     pub fn new(swaps: Vec<Swap>) -> Self {
         SwapGraph { swaps }
     }

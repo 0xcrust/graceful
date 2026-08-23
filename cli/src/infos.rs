@@ -26,10 +26,8 @@ pub async fn fetch_mint_infos(
 
     let mut final_results = Vec::with_capacity(mints.len());
     let mut no_metadata = vec![];
-    for ((mint_account, metadata_account), mint) in mint_accounts
-        .into_iter()
-        .zip(metadata_accounts.into_iter())
-        .zip(mints)
+    for ((mint_account, metadata_account), mint) in
+        mint_accounts.into_iter().zip(metadata_accounts).zip(mints)
     {
         let Some(mint_account) = mint_account else {
             log::error!("No mint account found for mint {}", mint);
