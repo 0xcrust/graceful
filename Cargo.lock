@@ -848,6 +848,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "cargo-graceful"
+version = "0.1.0"
+dependencies = [
+ "anchor-lang",
+ "anchor-spl",
+ "anyhow",
+ "clap",
+ "colored",
+ "comfy-table",
+ "dotenv",
+ "env_logger",
+ "graceful",
+ "log",
+ "solana-client",
+ "solana-commitment-config",
+ "solana-program-pack",
+ "solana-pubkey 3.0.0",
+ "solana-signature",
+ "solana-transaction-status",
+ "spl-token-2022-interface",
+ "spl-token-interface",
+ "spl-token-metadata-interface",
+ "tokio",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.65"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1877,32 +1903,6 @@ dependencies = [
  "spl-token-2022-interface",
  "spl-token-interface",
  "thiserror 2.0.18",
- "tokio",
-]
-
-[[package]]
-name = "graceful-cli"
-version = "0.1.0"
-dependencies = [
- "anchor-lang",
- "anchor-spl",
- "anyhow",
- "clap",
- "colored",
- "comfy-table",
- "dotenv",
- "env_logger",
- "graceful",
- "log",
- "solana-client",
- "solana-commitment-config",
- "solana-program-pack",
- "solana-pubkey 3.0.0",
- "solana-signature",
- "solana-transaction-status",
- "spl-token-2022-interface",
- "spl-token-interface",
- "spl-token-metadata-interface",
  "tokio",
 ]
 
