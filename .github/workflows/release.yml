@@ -122,12 +122,12 @@ jobs:
       - uses: Swatinem/rust-cache@v2
 
       # Dry-run first as a final sanity check (packaging errors, missing
-      # license file, etc). `graceful` must publish before `cargo-graced`,
+      # license file, etc). `graced` must publish before `cargo-graced`,
       # since the CLI depends on it with a version requirement.
-      - name: Dry-run publish (graceful)
-        run: cargo publish -p graceful --dry-run
-      - name: Publish graceful
-        run: cargo publish -p graceful --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
+      - name: Dry-run publish (graced)
+        run: cargo publish -p graced --dry-run
+      - name: Publish graced
+        run: cargo publish -p graced --token ${{ secrets.CARGO_REGISTRY_TOKEN }}
 
       # Give crates.io's index a moment to catch up before the dependent
       # crate tries to resolve against it.

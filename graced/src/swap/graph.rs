@@ -21,7 +21,7 @@
 //! # Example
 //!
 //! ```
-//! # use graceful::swap::{Swap, graph::SwapGraph};
+//! # use graced::swap::{Swap, graph::SwapGraph};
 //! # use solana_pubkey::Pubkey;
 //! let usdc = Pubkey::new_unique();
 //! let sol = Pubkey::new_unique();
