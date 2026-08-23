@@ -1845,7 +1845,6 @@ dependencies = [
 name = "graceful"
 version = "0.1.0"
 dependencies = [
- "agave-feature-set",
  "anchor-lang",
  "anyhow",
  "base64 0.22.1",
@@ -1855,12 +1854,9 @@ dependencies = [
  "bytemuck",
  "dotenv",
  "laserstream-core-proto",
- "lazy_static",
- "log",
  "once_cell",
  "self_cell",
  "serde",
- "solana-account",
  "solana-account-decoder",
  "solana-address 2.6.1",
  "solana-bincode",
@@ -1869,7 +1865,6 @@ dependencies = [
  "solana-log-parser",
  "solana-message",
  "solana-program-error",
- "solana-program-pack",
  "solana-pubkey 3.0.0",
  "solana-sdk-ids",
  "solana-signature",
