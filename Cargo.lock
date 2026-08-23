@@ -859,7 +859,7 @@ dependencies = [
  "comfy-table",
  "dotenv",
  "env_logger",
- "graceful",
+ "graced",
  "log",
  "solana-client",
  "solana-commitment-config",
@@ -1868,7 +1868,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "graceful"
+name = "graced"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",

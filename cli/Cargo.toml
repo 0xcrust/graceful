@@ -13,7 +13,7 @@ colored = "3.1.1"
 comfy-table = "7.2.2"
 dotenv = "0.15.0"
 env_logger = "0.11.11"
-graceful = {path = "../graceful"}
+graced = {path = "../graced"}
 log = {workspace = true}
 solana-client = {workspace = true}
 solana-commitment-config = {workspace = true}

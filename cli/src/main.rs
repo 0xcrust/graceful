@@ -7,7 +7,7 @@
 //!
 //! Usage:
 //! ```text
-//!   graceful-cli <SIGNATURE> [<SIGNATURE> ...] [--rpc-url <URL>] [--detail full|summary] [--style tree|compact|table]
+//!   graced-cli <SIGNATURE> [<SIGNATURE> ...] [--rpc-url <URL>] [--detail full|summary] [--style tree|compact|table]
 //! ```
 
 mod infos;
@@ -24,7 +24,7 @@ use solana_pubkey::Pubkey;
 use solana_signature::Signature;
 use solana_transaction_status::UiTransactionEncoding;
 
-use graceful::{
+use graced::{
     parse::{
         DexSwap, ParseTxError, Parsed,
         aggregator::{AggregatorSwap, Route},
@@ -41,7 +41,7 @@ type MintMap = HashMap<Pubkey, RawMintInfo>;
 
 #[derive(Parser, Debug)]
 #[command(
-    name = "graceful-cli",
+    name = "graced-cli",
     about = "Fetch Solana transaction(s) by signature and pretty-print recognized swaps"
 )]
 struct Args {
