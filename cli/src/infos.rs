@@ -28,7 +28,7 @@ pub async fn fetch_mint_infos(
     let mut no_metadata = vec![];
     for ((mint_account, metadata_account), mint) in mint_accounts
         .into_iter()
-        .zip(metadata_accounts.into_iter())
+        .zip(metadata_accounts)
         .zip(mints)
     {
         let Some(mint_account) = mint_account else {
