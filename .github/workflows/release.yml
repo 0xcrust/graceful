@@ -55,8 +55,6 @@ jobs:
             os: macos-latest
           - target: aarch64-apple-darwin
             os: macos-latest
-          - target: x86_64-pc-windows-msvc
-            os: windows-latest
 
     steps:
       - uses: actions/checkout@v4
@@ -65,16 +63,6 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-
-      - name: Install protoc
-        uses: arduino/setup-protoc@v3
-        with:
-          version: "27.2"
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Point PROTOC at the installed binary
-        shell: bash
-        run: echo "PROTOC=$(command -v protoc)" >> "$GITHUB_ENV"
 
       - name: Install cross-compilation tools
         if: contains(matrix.target, 'musl') || contains(matrix.target, 'aarch64-unknown-linux')
@@ -90,7 +78,6 @@ jobs:
         run: cross build --release --locked -p graceful-cli --target ${{ matrix.target }}
 
       - name: Package (unix)
-        if: "!contains(matrix.os, 'windows')"
         shell: bash
         run: |
           set -euo pipefail
@@ -98,20 +85,11 @@ jobs:
           strip ${{ env.BIN_NAME }} || true
           tar -czf ${{ github.workspace }}/${{ env.BIN_NAME }}-${{ matrix.target }}.tar.gz ${{ env.BIN_NAME }}
 
-      - name: Package (windows)
-        if: contains(matrix.os, 'windows')
-        shell: pwsh
-        run: |
-          Compress-Archive -Path target/${{ matrix.target }}/release/${{ env.BIN_NAME }}.exe `
-            -DestinationPath ${{ env.BIN_NAME }}-${{ matrix.target }}.zip
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.BIN_NAME }}-${{ matrix.target }}
-          path: |
-            ${{ env.BIN_NAME }}-${{ matrix.target }}.tar.gz
-            ${{ env.BIN_NAME }}-${{ matrix.target }}.zip
+          path: ${{ env.BIN_NAME }}-${{ matrix.target }}.tar.gz
           if-no-files-found: ignore
 
   release:
