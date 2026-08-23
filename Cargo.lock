@@ -848,7 +848,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "cargo-graceful"
+name = "cargo-graced"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",

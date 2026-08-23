@@ -1,5 +1,5 @@
 [package]
-name = "cargo-graceful"
+name = "cargo-graced"
 version = "0.1.0"
 edition = "2024"
 description = "A binary for parsing solana transactions with CLI output"
@@ -27,8 +27,8 @@ spl-token-metadata-interface = {workspace = true}
 tokio = {workspace = true}
 
 [package.metadata.binstall]
-pkg-url = "{ repo }/releases/download/v{ version }/cargo-graceful-{ target }{ archive-suffix }"
-bin-dir = "cargo-graceful{ binary-ext }"
+pkg-url = "{ repo }/releases/download/v{ version }/cargo-graced-{ target }{ archive-suffix }"
+bin-dir = "cargo-graced{ binary-ext }"
 pkg-fmt = "tgz"
 
 [package.metadata.binstall.overrides.x86_64-pc-windows-msvc]
