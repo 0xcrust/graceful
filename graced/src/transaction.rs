@@ -7,7 +7,7 @@ use instruction::{IxWithStackHeight, StackIx};
 use keys::AccountKeys;
 
 use base64::{Engine, prelude::BASE64_STANDARD};
-use laserstream_core_proto::{geyser::SubscribeUpdateTransactionInfo, prelude as proto};
+use yellowstone_grpc_proto::{geyser::SubscribeUpdateTransactionInfo, prelude as proto};
 use solana_address::error::ParseAddressError;
 use solana_bincode::limited_deserialize;
 use solana_client::rpc_response::UiTransactionError;

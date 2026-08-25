@@ -41,3 +41,4 @@ spl-token-interface = "2.0.0"
 spl-token-metadata-interface = "0.8.0"
 thiserror = "2.0.18"
 tokio = { version = "1.47.1", features = ["rt-multi-thread", "macros"] }
+yellowstone-grpc-proto = "12.6.0"
