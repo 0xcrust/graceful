@@ -1,5 +1,5 @@
 use {
-    laserstream_core_proto::prelude as proto,
+    yellowstone_grpc_proto::prelude as proto,
     solana_account_decoder::parse_token::UiTokenAmount,
     solana_hash::{HASH_BYTES, Hash},
     solana_message::{
@@ -195,6 +195,7 @@ pub fn create_reward(reward: proto::Reward) -> CreateResult<Reward> {
         reward_type: match proto::RewardType::try_from(reward.reward_type)
             .map_err(|_| "failed to parse reward_type")?
         {
+            proto::RewardType::DeactivatedStake => None,
             proto::RewardType::Unspecified => None,
             proto::RewardType::Fee => Some(RewardType::Fee),
             proto::RewardType::Rent => Some(RewardType::Rent),
