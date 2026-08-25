@@ -15,7 +15,6 @@ bincode = {workspace = true}
 borsh = {workspace = true}
 bs58 = {workspace = true}
 bytemuck = {workspace = true}
-laserstream-core-proto = {workspace = true}
 once_cell = {workspace = true}
 self_cell = {workspace = true}
 serde = {workspace = true}
@@ -39,6 +38,7 @@ solana-vote-program = {workspace = true}
 spl-token-2022-interface = {workspace = true}
 spl-token-interface = {workspace = true}
 thiserror = {workspace = true}
+laserstream-core-proto = "11.2.0"
 
 [dev-dependencies]
 dotenv = "0.15.0"
