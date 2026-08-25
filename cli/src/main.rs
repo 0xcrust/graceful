@@ -83,7 +83,7 @@ enum Style {
 
 #[tokio::main]
 async fn main() {
-    dotenv::dotenv().unwrap();
+    _ = dotenv::dotenv();
     env_logger::init();
 
     let args = Args::parse();
