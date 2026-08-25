@@ -7,7 +7,6 @@ use instruction::{IxWithStackHeight, StackIx};
 use keys::AccountKeys;
 
 use base64::{Engine, prelude::BASE64_STANDARD};
-use yellowstone_grpc_proto::{geyser::SubscribeUpdateTransactionInfo, prelude as proto};
 use solana_address::error::ParseAddressError;
 use solana_bincode::limited_deserialize;
 use solana_client::rpc_response::UiTransactionError;
@@ -28,6 +27,7 @@ use solana_transaction_status::{Reward, option_serializer::OptionSerializer};
 use solana_vote_program::vote_instruction::VoteInstruction;
 use std::{collections::HashMap, str::FromStr, sync::Arc};
 use thiserror::Error;
+use yellowstone_grpc_proto::{geyser::SubscribeUpdateTransactionInfo, prelude as proto};
 
 use crate::transaction::instruction::TransactionStack;
 

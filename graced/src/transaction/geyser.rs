@@ -1,5 +1,4 @@
 use {
-    yellowstone_grpc_proto::prelude as proto,
     solana_account_decoder::parse_token::UiTokenAmount,
     solana_hash::{HASH_BYTES, Hash},
     solana_message::{
@@ -16,6 +15,7 @@ use {
         InnerInstruction, InnerInstructions, Reward, RewardType, TransactionStatusMeta,
         TransactionTokenBalance,
     },
+    yellowstone_grpc_proto::prelude as proto,
 };
 
 type CreateResult<T> = Result<T, &'static str>;
