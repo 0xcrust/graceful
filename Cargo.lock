@@ -840,7 +840,7 @@ dependencies = [
 
 [[package]]
 name = "cargo-graced"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anchor-lang",
  "anchor-spl",
@@ -1860,7 +1860,7 @@ dependencies = [
 
 [[package]]
 name = "graced"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anchor-lang",
  "anyhow",
