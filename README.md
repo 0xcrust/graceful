@@ -8,6 +8,64 @@ belong to a recognized aggregator (router) or AMM program, figuring out
 which programs were touched, in what order, and how tokens flowed from input
 to output.
 
+## CLI
+
+`cargo-graced` is a companion binary that fetches one or more Solana
+transactions by signature and pretty-prints the swaps recognized by
+`parse::parse_transaction`. Amounts are shown human-adjusted for each
+mint's decimals, and mints are labeled with their symbol (falling back to
+name, then to a shortened pubkey).
+
+### Installing
+
+```
+cargo install cargo-graced
+```
+
+### Usage
+
+```
+cargo graced <SIGNATURE> [<SIGNATURE> ...] [--rpc-url <URL>] [--detail full|summary] [--style tree|compact|table]
+```
+
+- `<SIGNATURE>` — one or more transaction signatures to fetch and parse.
+  Pass multiple signatures to process several transactions in one run.
+- `--rpc-url <URL>` — the Solana RPC endpoint to fetch transactions from.
+  Defaults to the public mainnet-beta endpoint if omitted.
+- `--detail full|summary` — controls how much information is printed per
+  swap. `full` shows every decoded field; `summary` shows a condensed
+  one-line-per-swap view.
+- `--style tree|compact|table` — controls the output layout. `tree` prints
+  swaps nested by instruction path, `compact` prints a flat list, and
+  `table` prints an aligned tabular view.
+
+### Example
+
+```
+cargo graced 2tgYTJwiix8VwvMGt1hBUmMFK8eNTQRmL8HmaGT5gcqXwjVnznqqmyY1uFEC98dBMZ1xhhYWiYJZqwUsjKpf3vqX
+```
+
+```text
+--------------------------------------------------------------------------------------------
+  2tgYTJwiix8VwvMGt1hBUmMFK8eNTQRmL8HmaGT5gcqXwjVnznqqmyY1uFEC98dBMZ1xhhYWiYJZqwUsjKpf3vqX
+--------------------------------------------------------------------------------------------
+  \- # AGGREGATOR SWAP via JupV6
+     |- user Aqtz..8t9T
+     |- net   0.0995 SOL -> 731,751.757295 quality
+     \- routes (3)
+        [0] |- * DEX SWAP via PumpAmm
+        |  |- user   Aqtz..8t9T
+        |  |- market GLBb..9b9S
+        |  \- swap   0.098291259 SOL -> 731,751.757295 quality
+        [1] |- o UNDECODED via PumpAmm
+        |  |- path 5.2
+        |  \- transfers (1)
+        |     \- 0.000294815 SOL FHXA..68TL -> GHbD..vfc6 (signer GHKe..VpRu)
+        [2] \- o UNDECODED via PumpAmm
+           |- path 5.3
+           \- transfers: none
+```
+
 ## How it works
 
 The entry point is `parse::parse_transaction`, which works as follows.
